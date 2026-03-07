@@ -36,7 +36,7 @@ export default function FavoritesPage() {
                         <Link to={`/cars/${car.id}`} key={car.id} className="car-card card">
                             <div className="car-card-img">
                                 {car.images?.length > 0 ? (
-                                    <img src={`http://localhost:5164${car.images[0]?.imageUrl}`} alt={car.brandName} />
+                                    <img src={`https://nihad911-001-site1.rtempurl.com${car.images[0]?.imageUrl}`} alt={car.brandName} />
                                 ) : (
                                     <div className="car-card-no-img">🚗</div>
                                 )}

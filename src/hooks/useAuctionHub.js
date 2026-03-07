@@ -1,44 +1,46 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { useEffect, useState } from 'react';
+import * as signalR from "@microsoft/signalr";
 
-export function useAuctionHub(auctionId) {
-    const [connection, setConnection] = useState(null);
+export const useAuctionHub = (auctionId) => {
     const [liveBid, setLiveBid] = useState(null);
-    const [auctionClosed, setAuctionClosed] = useState(false);
-    const connRef = useRef(null);
+    const [connection, setConnection] = useState(null);
 
     useEffect(() => {
-        if (!auctionId) return;
-
-        const conn = new HubConnectionBuilder()
-            .withUrl('http://localhost:5164/auctionHub')
+        // Hub bağlantısını qururuq
+        const newConnection = new signalR.HubConnectionBuilder()
+            .withUrl("https://nihad911-001-site1.rtempurl.com/auctionHub") // Öz API URL-ni bura yaz
             .withAutomaticReconnect()
-            .configureLogging(LogLevel.Warning)
             .build();
 
-        conn.on('ReceiveBidUpdate', (data) => {
-            setLiveBid(data);
-        });
+        setConnection(newConnection);
+    }, []);
 
-        conn.on('AuctionClosed', (data) => {
-            setAuctionClosed(true);
-        });
+    useEffect(() => {
+        if (connection && auctionId) {
+            connection.start()
+                .then(() => {
+                    // Otağa qoşuluruq
+                    connection.invoke("JoinAuctionGroup", auctionId.toString());
 
-        conn.start()
-            .then(() => {
-                conn.invoke('JoinAuctionGroup', String(auctionId));
-                connRef.current = conn;
-                setConnection(conn);
-            })
-            .catch(console.error);
+                    // ReceiveNewBid eventini dinləyirik
+                    connection.on("ReceiveNewBid", (bidderName, amount, newEndTime) => {
+                        setLiveBid({ 
+                            bidderName, 
+                            amount, 
+                            newEndTime, 
+                            bidTime: new Date().toISOString() 
+                        });
+                    });
+                })
+                .catch(e => console.error('SignalR Error: ', e));
 
-        return () => {
-            if (connRef.current) {
-                connRef.current.invoke('LeaveAuctionGroup', String(auctionId)).catch(() => { });
-                connRef.current.stop();
-            }
-        };
-    }, [auctionId]);
+            return () => {
+                // Səhifədən çıxanda qrupdan ayrılırıq
+                connection.invoke("LeaveAuctionGroup", auctionId.toString());
+                connection.stop();
+            };
+        }
+    }, [connection, auctionId]);
 
-    return { connection, liveBid, auctionClosed };
-}
+    return { liveBid };
+};

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { getAllCars } from '../api/carsApi';
+import { getActiveCars, getAllCars } from '../api/carsApi';
 import { FiSearch, FiTrendingUp, FiShield, FiZap } from 'react-icons/fi';
 import { MdGavel } from 'react-icons/md';
 import './HomePage.css';
@@ -9,7 +9,7 @@ export default function HomePage() {
     const [featured, setFeatured] = useState([]);
 
     useEffect(() => {
-        getAllCars().then(r => {
+        getActiveCars().then(r => {
             const cars = Array.isArray(r.data) ? r.data : (r.data?.items || []);
             setFeatured(cars.slice(0, 6));
         }).catch(() => { });
@@ -77,7 +77,7 @@ export default function HomePage() {
                             <Link to={`/cars/${car.id}`} key={car.id} className="car-card card">
                                 <div className="car-card-img">
                                     {car.images?.length > 0 ? (
-                                        <img src={`http://localhost:5164${car.images[0]?.imageUrl}`} alt={car.brandName} />
+                                        <img src={`https://nihad911-001-site1.rtempurl.com${car.images[0]?.imageUrl}`} alt={car.brandName} />
                                     ) : (
                                         <div className="car-card-no-img">🚗</div>
                                     )}

@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { FiHeart, FiPhone, FiUser, FiClock, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import { MdGavel } from 'react-icons/md';
 import './CarDetailPage.css';
+import { createAuctionHold } from '../api/paymentsApi';
 
 const ENUM_LABELS = {
     fuelType: ['Benzin', 'Dizel', 'Hibrid', 'Elektrik', 'Qaz'],
@@ -69,6 +70,34 @@ export default function CarDetailPage() {
             .finally(() => setLoading(false));
     }, [id]);
 
+    // LiveBid gəldikdə həm qiyməti, həm də vaxtı yeniləyirik
+useEffect(() => {
+    if (liveBid) {
+        setCar(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                auction: {
+                    ...prev.auction,
+                    currentPrice: liveBid.amount,
+                    endTime: liveBid.newEndTime // Backend-dən gələn yeni vaxt (uzanma ehtimalı üçün)
+                }
+            };
+        });
+
+        // Yeni təklifi tarixçənin başına əlavə edirik
+        setBids(prev => [
+            {
+                id: Date.now(), // Keçici ID
+                bidderName: liveBid.bidderName,
+                amount: liveBid.amount,
+                bidTime: liveBid.bidTime
+            },
+            ...prev
+        ]);
+    }
+}, [liveBid]);
+
     useEffect(() => {
         if (liveBid) {
             setCar(prev => prev ? { ...prev, auction: { ...prev.auction, currentPrice: liveBid.currentPrice || liveBid.amount } } : prev);
@@ -89,12 +118,48 @@ export default function CarDetailPage() {
         e.preventDefault();
         if (!isLoggedIn) { navigate('/login'); return; }
         setBidLoading(true);
+
+        const storedData = JSON.parse(localStorage.getItem('payed-auction-data'));
+
         try {
-            await createBid({ auctionId: car.auction.id, amount: parseFloat(bidAmount), paymentIntentId: '' });
-            toast.success('Təklifiniz qəbul edildi! 🏆');
-            setBidAmount('');
-        } catch (err) { toast.error(err.response?.data?.message || err.response?.data || 'Təklif göndərilə bilmədi'); }
-        finally { setBidLoading(false); }
+            if (storedData && storedData.carId === id) {
+                const bidData = {
+                    auctionId: car.auction.id,
+                    amount: parseFloat(bidAmount),
+                    paymentIntentId: storedData.sessionId
+                };
+
+                const res = await createBid(bidData);
+
+                // 1. Əgər API 200 OK qaytarıbsa amma Success: false-dursa (Yumşaq xəta)
+                if (res.Success === false || res.StatusCode === 400) {
+                    throw new Error(res.Message || 'Təklif göndərilə bilmədi');
+                }
+
+                // Əgər bura çatdıqsa, deməli hər şey qaydasındadır
+                toast.success('Təklifiniz qəbul edildi! 🏆');
+                setBidAmount('');
+
+            } else {
+                const res = await createAuctionHold(car.id);
+                if (res.data?.url) {
+                    window.location.href = res.data.url;
+                }
+            }
+        } catch (err) {
+            // 2. Xəta mesajını backend-dən gələn formata uyğun tuturuq
+            // Axios xətasıdırsa (err.response), yoxsa bizim atdığımız Error-dur (err.message)?
+            const backendMessage = err.response?.data?.Message ||
+                err.response?.data?.message ||
+                err.message ||
+                'Gözlənilməz xəta baş verdi';
+
+            console.log('Xəta detalı:', err);
+            toast.error(backendMessage);
+
+        } finally {
+            setBidLoading(false);
+        }
     };
 
     const fetchAi = async () => {
@@ -119,7 +184,7 @@ export default function CarDetailPage() {
                     <div className="gallery-main">
                         {images.length > 0 ? (
                             <>
-                                <img src={`http://localhost:5164${images[imgIdx]?.imageUrl}`} alt={car.brandName} />
+                                <img src={`https://nihad911-001-site1.rtempurl.com${images[imgIdx]?.imageUrl}`} alt={car.brandName} />
                                 {images.length > 1 && (
                                     <>
                                         <button className="gallery-nav gallery-prev" onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}><FiChevronLeft /></button>
@@ -134,7 +199,7 @@ export default function CarDetailPage() {
                     {images.length > 1 && (
                         <div className="gallery-thumbs">
                             {images.map((img, i) => (
-                                <img key={img.id} src={`http://localhost:5164${img.imageUrl}`} alt=""
+                                <img key={img.id} src={`https://nihad911-001-site1.rtempurl.com${img.imageUrl}`} alt=""
                                     className={i === imgIdx ? 'active' : ''} onClick={() => setImgIdx(i)} />
                             ))}
                         </div>

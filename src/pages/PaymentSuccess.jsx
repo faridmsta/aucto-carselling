@@ -22,11 +22,14 @@ export default function PaymentSuccess() {
 
         const verify = async () => {
             try {
-                if (type === 'listing') {
-                    await confirmPayment(sessionId, carId, type);
-                } else {
-                    await createAuctionFee(carId);
+
+                await confirmPayment(sessionId, carId, type);
+
+                if (type == 'hold') {
+                    localStorage.setItem('payed-auction-data', JSON.stringify({ carId, sessionId }));
+
                 }
+
                 toast.success("Təbriklər, elanınız aktivdir!");
                 effectRan.current = true;
             } catch (error) {

@@ -1,65 +1,132 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getDashboardStats } from '../../api/adminApi';
-import { useAuth } from '../../context/AuthContext';
 import { FiUsers, FiTruck, FiList, FiActivity } from 'react-icons/fi';
+import { getDashboardStats } from '../../api/adminApi';
+import { getAdminCars } from '../../api/carsApi';
+import { useAuth } from '../../context/AuthContext';
 import './AdminPages.css';
 
 export default function AdminDashboard() {
     const { isAdmin } = useAuth();
     const navigate = useNavigate();
+    
     const [stats, setStats] = useState(null);
+    const [cars, setCars] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!isAdmin) { navigate('/'); return; }
-        getDashboardStats().then(r => setStats(r.data)).catch(() => { }).finally(() => setLoading(false));
-    }, []);
+        // 1. Security Check
+        if (!isAdmin) {
+            navigate('/');
+            return;
+        }
 
-    if (loading) return <div className="page loading-page"><div className="spinner"></div></div>;
+        // 2. Concurrent Data Fetching
+        const fetchData = async () => {
+            try {
+                const [statsRes, carsRes] = await Promise.all([
+                    getDashboardStats(),
+                    getAdminCars()
+                ]);
+                
+                setStats(statsRes.data);
+                // Note: Adjusted to match standard Axios response structure
+                setCars(carsRes.data); 
+            } catch (err) {
+                console.error("Dashboard data load error:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, [isAdmin, navigate]);
+
+    if (loading) {
+        return (
+            <div className="page loading-page">
+                <div className="spinner"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="page container">
-            <div className="section-header">
+            <header className="section-header">
                 <h1>🛡️ Admin Panel</h1>
                 <p>Platformanın idarəsi</p>
-            </div>
+            </header>
 
+            {/* Stats Overview */}
             {stats && (
                 <div className="grid-4" style={{ marginBottom: 40 }}>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'rgba(99,102,241,0.15)', color: 'var(--accent-light)' }}><FiUsers /></div>
-                        <div className="stat-info"><h3>{stats.totalUsers}</h3><p>İstifadəçilər</p></div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'rgba(16,185,129,0.15)', color: 'var(--success)' }}><FiTruck /></div>
-                        <div className="stat-info"><h3>{stats.totalCars}</h3><p>Maşınlar</p></div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'rgba(59,130,246,0.15)', color: 'var(--info)' }}><FiList /></div>
-                        <div className="stat-info"><h3>{stats.activeListings}</h3><p>Aktiv Elanlar</p></div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-icon" style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--warning)' }}><FiActivity /></div>
-                        <div className="stat-info"><h3>{stats.liveAuctions}</h3><p>Canlı Hərraclar</p></div>
-                    </div>
+                    <StatCard icon={<FiUsers />} value={stats.totalUsers} label="İstifadəçilər" color="var(--accent-light)" bg="rgba(99,102,241,0.15)" />
+                    <StatCard icon={<FiTruck />} value={stats.totalCars} label="Maşınlar" color="var(--success)" bg="rgba(16,185,129,0.15)" />
+                    <StatCard icon={<FiList />} value={stats.activeListings} label="Aktiv Elanlar" color="var(--info)" bg="rgba(59,130,246,0.15)" />
+                    <StatCard icon={<FiActivity />} value={stats.liveAuctions} label="Canlı Hərraclar" color="var(--warning)" bg="rgba(245,158,11,0.15)" />
                 </div>
             )}
 
-            <div className="grid-3">
-                <Link to="/admin/brands" className="card" style={{ padding: '28px', textAlign: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: 8 }}>🏷️ Markalar</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Marka əlavə et, sil</p>
-                </Link>
-                <Link to="/admin/models" className="card" style={{ padding: '28px', textAlign: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: 8 }}>🚘 Modellər</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Model əlavə et, sil</p>
-                </Link>
-                <Link to="/admin/cities" className="card" style={{ padding: '28px', textAlign: 'center' }}>
-                    <h3 style={{ fontSize: '1.2rem', marginBottom: 8 }}>📍 Şəhərlər</h3>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Şəhər əlavə et, sil</p>
-                </Link>
+            {/* Quick Links */}
+            <div className="grid-3" style={{ marginBottom: 40 }}>
+                <QuickLink to="/admin/brands" emoji="🏷️" title="Markalar" desc="Marka əlavə et, sil" />
+                <QuickLink to="/admin/models" emoji="🚘" title="Modellər" desc="Model əlavə et, sil" />
+                <QuickLink to="/admin/cities" emoji="📍" title="Şəhərlər" desc="Şəhər əlavə et, sil" />
+            </div>
+
+            {/* Recent Cars Table */}
+            <div className="card" style={{ padding: '20px', overflowX: 'auto' }}>
+                <h3 style={{ marginBottom: '20px' }}>🚗 Son Avtomobillər</h3>
+                <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                        <tr style={{ textAlign: 'left', borderBottom: '1px solid #eee' }}>
+                            <th style={{ padding: '12px' }}>Şəkil</th>
+                            <th style={{ padding: '12px' }}>Marka/Model</th>
+                            <th style={{ padding: '12px' }}>İl</th>
+                            <th style={{ padding: '12px' }}>Qiymət</th>
+                            <th style={{ padding: '12px' }}>Satıcı</th>
+                            <th style={{ padding: '12px' }}>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {cars.map(car => (
+                            <tr key={car.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                <td style={{ padding: '12px' }}>
+                                    <img
+                                        src={car.images?.find(i => i.isMain)?.imageUrl || 'https://via.placeholder.com/50'}
+                                        alt="car"
+                                        style={{ width: '50px', height: '35px', borderRadius: '4px', objectFit: 'cover' }}
+                                    />
+                                </td>
+                                <td style={{ padding: '12px' }}><strong>{car.brandName}</strong> {car.modelName}</td>
+                                <td style={{ padding: '12px' }}>{car.year}</td>
+                                <td style={{ padding: '12px' }}>{car.listing?.price} AZN</td>
+                                <td style={{ padding: '12px' }}>{car.sellerFullName}</td>
+                                <td style={{ padding: '12px' }}>
+                                    <span className={`badge ${car.listing?.status === 0 ? 'pending' : 'active'}`}>
+                                        {car.listing?.status === 0 ? 'Gözləmədə' : 'Aktiv'}
+                                    </span>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
         </div>
     );
 }
+
+// Sub-components for cleaner JSX
+const StatCard = ({ icon, value, label, color, bg }) => (
+    <div className="stat-card">
+        <div className="stat-icon" style={{ background: bg, color: color }}>{icon}</div>
+        <div className="stat-info"><h3>{value}</h3><p>{label}</p></div>
+    </div>
+);
+
+const QuickLink = ({ to, emoji, title, desc }) => (
+    <Link to={to} className="card" style={{ padding: '28px', textAlign: 'center', textDecoration: 'none', color: 'inherit' }}>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: 8 }}>{emoji} {title}</h3>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{desc}</p>
+    </Link>
+);

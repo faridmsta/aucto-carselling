@@ -7,7 +7,7 @@ import { getAllCities } from '../api/citiesApi';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-toastify';
 import './CreateAdPage.css';
-import { createPaymentIntent } from '../api/paymentsApi';
+import { createAuctionFee, createPaymentIntent } from '../api/paymentsApi';
 
 export default function CreateAdPage() {
     const { isLoggedIn } = useAuth();
@@ -38,13 +38,50 @@ export default function CreateAdPage() {
     }, []);
 
     const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-    const filteredModels = form.brandId ? models.filter(m => m.brandId === parseInt(form.brandId)) : models;
+    const filteredModels = form.brandId ? models.filter(m => m.brandId === parseInt(form.brandId)) : [];
 
-    // handleSubmit funksiyasının yenilənmiş forması
+    // Validation Logic
+    const validateStep = (currentStep) => {
+        if (currentStep === 1) {
+            if (!form.brandId || !form.modelId || !form.cityId || !form.year || 
+                form.km === '' || !form.color || !form.engineCapacity || !form.horsePower) {
+                toast.warning("Zəhmət olmasa ulduzlu (*) və bütün texniki sahələri doldurun.");
+                return false;
+            }
+        }
+        if (currentStep === 2) {
+            if (images.length === 0) {
+                toast.warning("Zəhmət olmasa ən azı bir şəkil yükləyin.");
+                return false;
+            }
+        }
+        if (currentStep === 3) {
+            if (parseInt(form.saleType) === 1) {
+                if (!form.price) {
+                    toast.warning("Zəhmət olmasa qiyməti qeyd edin.");
+                    return false;
+                }
+            } else {
+                if (!form.startingPrice || !form.auctionEndDate) {
+                    toast.warning("Başlanğıc qiyməti və bitmə tarixini qeyd edin.");
+                    return false;
+                }
+            }
+        }
+        return true;
+    };
+
+    const handleNextStep = (next) => {
+        if (validateStep(step)) {
+            setStep(next);
+        }
+    };
+
     const handleSubmit = async () => {
+        if (!validateStep(3)) return; // Final check before submission
+        
         setLoading(true);
         try {
-            // 1. Payload hazırlığı (Mövcud kodunuz)
             const payload = {
                 brandId: parseInt(form.brandId), modelId: parseInt(form.modelId), cityId: parseInt(form.cityId),
                 year: parseInt(form.year), vin: form.vin || null, km: parseInt(form.km),
@@ -65,34 +102,23 @@ export default function CreateAdPage() {
                 payload.auctionEndDate = form.auctionEndDate || null;
             }
 
-            // 2. Elanı yarat (Backend-ə göndər)
             const res = await createCarAd(payload);
             const carId = res.data.carId;
 
-
-            // 3. Şəkilləri yüklə (Mövcud kodunuz)
             if (images.length > 0 && carId) {
                 const fd = new FormData();
                 images.forEach(img => fd.append('images', img));
                 await uploadCarImages(carId, fd);
             }
 
-            // 4. ÖDƏNİŞƏ YÖNLƏNDİRMƏ (Yeni hissə)
             let paymentResponse;
-
-
             if (parseInt(form.saleType) == 1) {
-                // Normal elan (Simple, VIP, Premium)
-                paymentResponse = await createPaymentIntent(parseInt(form.listingType),parseInt(carId));
-                console.log(paymentResponse);
-                
+                paymentResponse = await createPaymentIntent(parseInt(form.listingType), parseInt(carId));
             } else {
-                // Hərrac elanı
-                 paymentResponse = await createPaymentIntent(parseInt(form.listingType),parseInt(carId));
+                paymentResponse = await createAuctionFee(parseInt(carId));
             }
 
             if (paymentResponse.data?.url) {
-                // İstifadəçini birbaşa Stripe checkout səhifəsinə göndəririk
                 window.location.href = paymentResponse.data.url;
             } else {
                 toast.success("Elan yaradıldı!");
@@ -129,14 +155,14 @@ export default function CreateAdPage() {
                         <div className="form-row">
                             <div className="form-group">
                                 <label>Marka *</label>
-                                <select value={form.brandId} onChange={e => set('brandId', e.target.value)} required>
+                                <select value={form.brandId} onChange={e => { set('brandId', e.target.value); set('modelId', ''); }} required>
                                     <option value="">Seçin</option>
                                     {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                                 </select>
                             </div>
                             <div className="form-group">
                                 <label>Model *</label>
-                                <select value={form.modelId} onChange={e => set('modelId', e.target.value)} required>
+                                <select value={form.modelId} onChange={e => set('modelId', e.target.value)} disabled={!form.brandId} required>
                                     <option value="">Seçin</option>
                                     {filteredModels.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                                 </select>
@@ -167,11 +193,11 @@ export default function CreateAdPage() {
                         </div>
                         <div className="form-row">
                             <div className="form-group">
-                                <label>Mühərrik Həcmi (cc)</label>
+                                <label>Mühərrik Həcmi (cc) *</label>
                                 <input type="number" value={form.engineCapacity} onChange={e => set('engineCapacity', e.target.value)} />
                             </div>
                             <div className="form-group">
-                                <label>Güc (HP)</label>
+                                <label>Güc (HP) *</label>
                                 <input type="number" value={form.horsePower} onChange={e => set('horsePower', e.target.value)} />
                             </div>
                         </div>
@@ -179,7 +205,7 @@ export default function CreateAdPage() {
                             <label>VIN (İstəyə bağlı)</label>
                             <input value={form.vin} onChange={e => set('vin', e.target.value)} placeholder="VIN nömrəsi" />
                         </div>
-                        <button className="btn btn-primary" onClick={() => setStep(2)}>Davam Et →</button>
+                        <button className="btn btn-primary" onClick={() => handleNextStep(2)}>Davam Et →</button>
                     </>
                 )}
 
@@ -239,14 +265,14 @@ export default function CreateAdPage() {
                             </select>
                         </div>
                         <div className="form-group">
-                            <label>Şəkillər</label>
+                            <label>Şəkillər *</label>
                             <input type="file" multiple accept="image/*" onChange={e => setImages([...e.target.files])}
                                 style={{ background: 'transparent', border: '1px dashed var(--border-color)', padding: '20px' }} />
                             {images.length > 0 && <small style={{ color: 'var(--text-muted)' }}>{images.length} şəkil seçildi</small>}
                         </div>
                         <div style={{ display: 'flex', gap: '12px' }}>
                             <button className="btn btn-secondary" onClick={() => setStep(1)}>← Geri</button>
-                            <button className="btn btn-primary" onClick={() => setStep(3)}>Davam Et →</button>
+                            <button className="btn btn-primary" onClick={() => handleNextStep(3)}>Davam Et →</button>
                         </div>
                     </>
                 )}
