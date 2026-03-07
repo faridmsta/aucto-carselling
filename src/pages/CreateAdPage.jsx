@@ -12,7 +12,7 @@ import { createAuctionFee, createPaymentIntent } from '../api/paymentsApi';
 export default function CreateAdPage() {
     const { isLoggedIn } = useAuth();
     const navigate = useNavigate();
-    const [step, setStep] = useState(2);
+    const [step, setStep] = useState(1);
     const [brands, setBrands] = useState([]);
     const [models, setModels] = useState([]);
     const [cities, setCities] = useState([]);
