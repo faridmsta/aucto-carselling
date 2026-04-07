@@ -68,15 +68,16 @@ export default function AdminDashboard() {
             )}
 
             {/* Quick Links */}
-            <div className="grid-3" style={{ marginBottom: 40 }}>
+            <div className="grid-4" style={{ marginBottom: 40 }}>
                 <QuickLink to="/admin/brands" emoji="🏷️" title="Markalar" desc="Marka əlavə et, sil" />
                 <QuickLink to="/admin/models" emoji="🚘" title="Modellər" desc="Model əlavə et, sil" />
                 <QuickLink to="/admin/cities" emoji="📍" title="Şəhərlər" desc="Şəhər əlavə et, sil" />
+                <QuickLink to="/admin/users" emoji="👤" title="İstifadəçilər" desc="Ban, unban və siyahı" />
             </div>
 
             {/* Recent Cars Table */}
             <div className="card" style={{ padding: '20px', overflowX: 'auto' }}>
-                <h3 style={{ marginBottom: '20px' }}>🚗 Son Avtomobillər</h3>
+                <h3 style={{ marginBottom: '20px' }}>🚗 Bütün Avtomobillər</h3>
                 <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ textAlign: 'left', borderBottom: '1px solid #eee' }}>
@@ -86,6 +87,7 @@ export default function AdminDashboard() {
                             <th style={{ padding: '12px' }}>Qiymət</th>
                             <th style={{ padding: '12px' }}>Satıcı</th>
                             <th style={{ padding: '12px' }}>Status</th>
+                            <th style={{ padding: '12px' }}>Əməliyyat</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -93,19 +95,36 @@ export default function AdminDashboard() {
                             <tr key={car.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
                                 <td style={{ padding: '12px' }}>
                                     <img
-                                        src={car.images?.find(i => i.isMain)?.imageUrl || 'https://via.placeholder.com/50'}
+                                        src={car.images?.find(i => i.isMain)?.imageUrl ? `https://nihad911-001-site1.rtempurl.com${car.images.find(i => i.isMain).imageUrl}` : 'https://via.placeholder.com/50'}
                                         alt="car"
                                         style={{ width: '50px', height: '35px', borderRadius: '4px', objectFit: 'cover' }}
                                     />
                                 </td>
                                 <td style={{ padding: '12px' }}><strong>{car.brandName}</strong> {car.modelName}</td>
                                 <td style={{ padding: '12px' }}>{car.year}</td>
-                                <td style={{ padding: '12px' }}>{car.listing?.price} AZN</td>
+                                <td style={{ padding: '12px' }}>{car.listing?.price || car.auction?.currentPrice} AZN</td>
                                 <td style={{ padding: '12px' }}>{car.sellerFullName}</td>
                                 <td style={{ padding: '12px' }}>
-                                    <span className={`badge ${car.listing?.status === 0 ? 'pending' : 'active'}`}>
-                                        {car.listing?.status === 0 ? 'Gözləmədə' : 'Aktiv'}
+                                    <span className={`badge ${car.listing?.status === 1 || car.auction?.status === 1 ? 'active' : 'pending'}`}>
+                                        {car.listing?.status === 1 || car.auction?.status === 1 ? 'Aktiv' : 'Gözləmədə'}
                                     </span>
+                                </td>
+                                <td style={{ padding: '12px' }}>
+                                    <button 
+                                        className="btn btn-sm btn-danger"
+                                        onClick={async () => {
+                                            if (window.confirm("Bu elanı silmək istədiyinizə əminsiniz?")) {
+                                                try {
+                                                    await deleteCarByAdmin(car.id);
+                                                    setCars(cars.filter(c => c.id !== car.id));
+                                                } catch (err) {
+                                                    alert("Xəta baş verdi!");
+                                                }
+                                            }
+                                        }}
+                                    >
+                                        Sil
+                                    </button>
                                 </td>
                             </tr>
                         ))}

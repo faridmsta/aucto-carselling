@@ -83,6 +83,8 @@ export default function HomePage() {
                                     )}
                                     {car.auction && <span className="badge badge-warning car-card-badge"><MdGavel /> Hərrac</span>}
                                     {car.listing && <span className="badge badge-accent car-card-badge">Satılır</span>}
+                                    {car.listing?.type === 3 && <span className="badge badge-premium car-card-badge">PREMIUM</span>}
+                                    {car.listing?.type === 2 && <span className="badge badge-vip car-card-badge">VIP</span>}
                                 </div>
                                 <div className="car-card-body">
                                     <h3>{car.brandName} {car.modelName}</h3>

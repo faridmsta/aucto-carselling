@@ -8,3 +8,4 @@ export const addBrand = (data) => API.post('/Admin/add-brand', data);
 export const deleteBrandAdmin = (brandId) => API.delete(`/Admin/delete-brand/${brandId}`);
 export const addModel = (data) => API.post('/Admin/add-model', data);
 export const deleteModelAdmin = (modelId) => API.delete(`/Admin/delete-model/${modelId}`);
+export const getUsers = () => API.get('/Admin/users');

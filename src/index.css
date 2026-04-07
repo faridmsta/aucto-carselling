@@ -155,6 +155,8 @@ select option { background: var(--bg-secondary); color: var(--text-primary); }
 .badge-success { background: var(--success-bg); color: var(--success); }
 .badge-warning { background: var(--warning-bg); color: var(--warning); }
 .badge-danger { background: var(--danger-bg); color: var(--danger); }
+.badge-vip { background: linear-gradient(45deg, #f59e0b, #fbbf24); color: #000; box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+.badge-premium { background: linear-gradient(45deg, #6366f1, #a855f7); color: #fff; box-shadow: 0 0 10px rgba(99, 102, 241, 0.4); }
 
 /* Section headers */
 .section-header { margin-bottom: 32px; }
