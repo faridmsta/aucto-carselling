@@ -19,7 +19,7 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="navbar-inner">
                 <Link to="/" className="navbar-brand">
-                    <span className="brand-icon">⚡</span>
+                    <img src="/logo.png" alt="" style={{  height: '80px' }} />
                     AUCTO
                 </Link>
 
