@@ -19,8 +19,8 @@ export default function Navbar() {
         <nav className="navbar">
             <div className="navbar-inner">
                 <Link to="/" className="navbar-brand">
-                    <img src="/logo.png" alt="" style={{  height: '80px' }} />
-                    AUCTO
+                    <img src="/logo.png" alt="" style={{ height: '80px', filter: 'invert(1)' }} />
+
                 </Link>
 
                 <button className="hamburger" onClick={() => setOpen(!open)}>

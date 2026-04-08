@@ -77,7 +77,9 @@ export default function HomePage() {
                             <Link to={`/cars/${car.id}`} key={car.id} className="car-card card">
                                 <div className="car-card-img">
                                     {car.images?.length > 0 ? (
-                                        <img src={`https://nihad911-001-site1.rtempurl.com${car.images[0]?.imageUrl}`} alt={car.brandName} />
+                                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <img src={`https://nihad911-001-site1.rtempurl.com${car.images[0]?.imageUrl}`} alt={car.brandName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        </div>
                                     ) : (
                                         <div className="car-card-no-img">🚗</div>
                                     )}
